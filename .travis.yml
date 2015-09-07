@@ -3,6 +3,7 @@ go:
 - 1.5
 
 install:
+- make deps
 - make build
 
 script:
