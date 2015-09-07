@@ -19,6 +19,9 @@ func usage(conf *sup.Supfile, arg int) {
 			for _, host := range network.Hosts {
 				log.Printf("   - %v\n", host)
 			}
+			if network.HostInventory != "" {
+				log.Printf("   - script: %v\n", network.HostInventory)
+			}
 		}
 	case 2:
 		// <target/command> not found or missing,
@@ -48,15 +51,15 @@ func parseArgsOrDie(conf *sup.Supfile) (*sup.Network, []*sup.Command) {
 	if len(os.Args) < 2 {
 		usage(conf, len(os.Args))
 	}
-	// Does the <network> exist?
-	network, ok := conf.Networks[os.Args[1]]
-	if !ok {
-		log.Printf("Unknown network \"%v\"\n\n", os.Args[1])
+
+	err := conf.LoadNetwork(os.Args[1])
+	if err != nil {
+		log.Println(err)
 		usage(conf, 1)
 	}
 
 	// Does <network> have any hosts?
-	if len(network.Hosts) == 0 {
+	if conf.NetworkHostCount(os.Args[1]) == 0 {
 		log.Printf("No hosts specified for network \"%v\"", os.Args[1])
 		usage(conf, 1)
 	}
@@ -65,30 +68,18 @@ func parseArgsOrDie(conf *sup.Supfile) (*sup.Network, []*sup.Command) {
 	if len(os.Args) < 3 {
 		usage(conf, len(os.Args))
 	}
+
 	// Does the <target/command> exist?
-	target, isTarget := conf.Targets[os.Args[2]]
-	if isTarget {
-		// It's the target. Loop over its commands.
-		for _, cmd := range target {
-			// Does the target's command exist?
-			command, isCommand := conf.Commands[cmd]
-			if !isCommand {
-				log.Printf("Unknown command \"%v\" (from target \"%v\": %v)\n\n", cmd, os.Args[2], target)
-				usage(conf, 2)
-			}
-			command.Name = cmd
-			commands = append(commands, &command)
-		}
-	} else {
-		// It's probably a command. Does it exist?
-		command, isCommand := conf.Commands[os.Args[2]]
-		if !isCommand {
-			// Not a target, nor command.
-			log.Printf("Unknown target/command \"%v\"\n\n", os.Args[2])
-			usage(conf, 2)
-		}
-		command.Name = os.Args[2]
-		commands = append(commands, &command)
+	isEntryPoint := conf.HasEntryPoint(os.Args[2])
+	if !isEntryPoint {
+		log.Printf("Unknown target/command \"%v\"\n\n", os.Args[2])
+		usage(conf, 2)
+	}
+
+	commands, err = conf.CollectCommands(os.Args[2])
+	if err != nil {
+		log.Println(err)
+		usage(conf, 2)
 	}
 
 	// Check for extra arguments
@@ -96,6 +87,7 @@ func parseArgsOrDie(conf *sup.Supfile) (*sup.Network, []*sup.Command) {
 		usage(conf, len(os.Args))
 	}
 
+	network := conf.GetNetwork(os.Args[1])
 	return &network, commands
 }
 

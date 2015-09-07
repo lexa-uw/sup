@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "x1.dev"
+echo "x2.dev"

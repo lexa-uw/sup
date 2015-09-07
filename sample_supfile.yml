@@ -13,7 +13,8 @@ networks: # Groups of hosts
   local:
     env:
       CONFIG: example.local.cfg
-    host_inventory: ./local_net_inventory
+    hosts:
+      - localhost
 
   dev:
     env:
@@ -30,22 +31,16 @@ networks: # Groups of hosts
   prod:
     env:
       CONFIG: example.prod.cfg
+    host_inventory: ./fetch_production_hosts
     hosts:
       - ubuntu@prod1.example.com
       - ubuntu@prod2.example.com
       - ubuntu@prod3.example.com
 
 commands: # Named set of commands to be run remotely
-  uname:
-    desc: Print uname
-    run: uname -a
-
-  logged_users:
-    desc: Print logged users
-    run: w
-  date:
-    desc: Print date
-    run: date
+  ping:
+    desc: Print uname and current date/time.
+    run: uname -a; date
 
   upload:
     desc: Upload this repository
@@ -119,12 +114,6 @@ commands: # Named set of commands to be run remotely
     run: docker exec -i $NAME bash
 
 targets: # Aliases to run multiple commands at once
-  machine_info:
-    - uname
-    - logged_users
-  test:
-    - date
-    - machine_info
   deploy:
     #- pull
     - upload
